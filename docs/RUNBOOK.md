@@ -15,7 +15,6 @@ Declare the following in the repository settings to keep automation working (val
 **Repository variables (Actions > Variables):**
 - `AWS_ACCOUNT_ID`
 - `AWS_REGION`
-- `AWS_ECR_REGISTRY`
 - `ECR_REPOSITORY`
 - `DB_NAME`
 - `DB_USERNAME`

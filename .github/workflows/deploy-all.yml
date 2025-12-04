@@ -1,5 +1,5 @@
 name: Deploy All
-run-name: Deploy infra and app from ${{ inputs.ref || 'main' }}
+run-name: Deploy infra and app from ${{ inputs.ref }}
 
 on:
   workflow_dispatch:

@@ -3,7 +3,7 @@ name: CI - App
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ master ]
     paths:
       - app/**
       - .github/workflows/ci-app.yaml

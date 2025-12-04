@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    key     = "eks-gitops/terraform.tfstate"
+    key     = "infra/terraform/terraform.tfstate"
     encrypt = true
   }
 }

@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || 'main' }}
+          ref: ${{ inputs.ref }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3

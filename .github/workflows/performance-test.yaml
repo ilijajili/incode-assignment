@@ -1,0 +1,131 @@
+name: Performance Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Base URL (including protocol) for the API under test"
+        required: false
+        type: string
+  workflow_run:
+    workflows: ["CD - App"]
+    types:
+      - completed
+
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+
+jobs:
+  k6-load-test:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (for auto-discovery)
+        if: env.AWS_ROLE_TO_ASSUME != '' || env.AWS_ACCESS_KEY_ID != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        if: env.AWS_ROLE_TO_ASSUME != '' || env.AWS_ACCESS_KEY_ID != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kubectl
+
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg software-properties-common
+          curl -s https://dl.k6.io/key.gpg | sudo apt-key add -
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+
+      - name: Run load test
+        env:
+          TARGET_URL_INPUT: ${{ inputs.target_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          AWS_ROLE_TO_ASSUME: ${{ env.AWS_ROLE_TO_ASSUME }}
+          PROJECT_NAME: ${{ env.PROJECT_NAME }}
+        run: |
+          TARGET_URL="${TARGET_URL_INPUT}"
+
+          if [ -z "${TARGET_URL}" ]; then
+            if { [ -z "${AWS_ROLE_TO_ASSUME}" ] && [ -z "${AWS_ACCESS_KEY_ID}" ]; } || [ -z "${AWS_REGION}" ]; then
+              echo "No target_url provided and AWS configuration is missing for auto-discovery." >&2
+              exit 1
+            fi
+
+            CLUSTER_NAME="${PROJECT_NAME:-task-gitops}-eks"
+            echo "Attempting to discover ALB hostname from ingress on cluster '${CLUSTER_NAME}' in region '${AWS_REGION}'."
+
+            aws eks update-kubeconfig --name "${CLUSTER_NAME}" --region "${AWS_REGION}"
+
+            ATTEMPTS=20
+            SLEEP_SECONDS=30
+            for i in $(seq 1 ${ATTEMPTS}); do
+              INGRESS_HOST=$(kubectl get ingress -n task-app task-app -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+              INGRESS_IP=$(kubectl get ingress -n task-app task-app -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+
+              if [ -n "${INGRESS_HOST}" ]; then
+                TARGET_URL="http://${INGRESS_HOST}"
+                echo "Discovered TARGET_URL=${TARGET_URL}"
+                break
+              fi
+
+              if [ -n "${INGRESS_IP}" ]; then
+                TARGET_URL="http://${INGRESS_IP}"
+                echo "Discovered TARGET_URL=${TARGET_URL}"
+                break
+              fi
+
+              echo "Ingress hostname not available yet (attempt ${i}/${ATTEMPTS}). Waiting ${SLEEP_SECONDS}s..."
+              sleep ${SLEEP_SECONDS}
+            done
+
+            if [ -z "${TARGET_URL}" ]; then
+              echo "Failed to discover ingress hostname after ${ATTEMPTS} attempts. Provide workflow input 'target_url'." >&2
+              exit 1
+            fi
+          fi
+
+          if ! echo "${TARGET_URL}" | grep -Eq "^https?://"; then
+            echo "TARGET_URL must include protocol (e.g., https://example.com). Received: '${TARGET_URL}'"
+            exit 1
+          fi
+
+          cat <<'SCRIPT' > load.js
+          import http from 'k6/http';
+          import { sleep, check } from 'k6';
+
+          export let options = {
+            vus: 10,
+            duration: '30s',
+            thresholds: {
+              http_req_duration: ['p(95)<500'],
+              http_req_failed: ['rate<0.01'],
+            },
+          };
+
+          export default function () {
+            const res = http.get(`${__ENV.TARGET_URL}/tasks`);
+            check(res, { 'status is 200': (r) => r.status === 200 });
+            sleep(1);
+          }
+          SCRIPT
+          k6 run load.js

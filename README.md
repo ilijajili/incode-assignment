@@ -1,74 +1,25 @@
-# ![RealWorld Example App](https://github.com/gothinkster/realworld-starter-kit/raw/master/logo.png)
+# Production-Style EKS GitOps Example
 
-> ### Golang clean-architecture codebase containing real world examples (CRUD, auth, advanced patterns, etc) that adheres to the [RealWorld](https://github.com/gothinkster/realworld) spec and API.
+This repository demonstrates a production-style, fully automated deployment stack on AWS using Terraform, EKS, ArgoCD, and GitHub Actions. It includes a simple FastAPI task service, GitOps manifests, observability, centralized logging, and documentation for bootstrapping and operating the system.
 
+## Repository layout
+- `app/` – FastAPI sample application, Dockerfile, and tests.
+- `infra/terraform/` – Terraform IaC for networking, EKS, RDS, Redis, S3, and IAM (GitHub OIDC).
+- `k8s/` – Kubernetes base manifests and overlays for the app.
+- `observability/` – Prometheus and Grafana Helm values.
+- `logging/` – Fluent Bit DaemonSet for shipping pod logs to Cloud Watch Logs.
+- `argocd/` – ArgoCD installation manifests and Application definitions (App of Apps).
+- `docs/` – Architecture, setup, and runbook documentation.
+- `.github/workflows/` – GitHub Actions CI/CD pipelines.
 
-### [Demo](https://github.com/gothinkster/realworld)&nbsp;&nbsp;&nbsp;&nbsp;[RealWorld](https://github.com/gothinkster/realworld)
+> All credentials and environment-specific values must be supplied through GitHub Secrets/Variables, Kubernetes Secrets/ConfigMaps, or Terraform input variables. No secrets are commited to the repo.
 
+## Quick start
+1. Read `docs/SETUP.md` for bootstrap steps.
+2. Provision AWS infrastructure with Terraform (S3 remote state, VPC, EKS, RDS, Redis, S3 buckets, IAM OIDC for GitHub Actions).
+3. Install ArgoCD and point it at this repo's main branch.
+4. Run the CI/CD workflows from GitHub Actions to build/push the app image and update manifests. ArgoCD syncs the changes to EKS.
+5. Observe logs in CloudWatch and metrics in Grafana.
 
-This codebase was created to demonstrate a fully fledged fullstack application built with  go including CRUD operations, authentication, routing, pagination, and more.
+Refer to `docs/ARCHITECTURE.md` and `docs/RUNBOOK.md` for more details.
 
-We've gone to great lengths to adhere to the go community styleguides & best practices.
-
-For more information on how to this works with other frontends/backends, head over to the [RealWorld](https://github.com/gothinkster/realworld) repo.
-
-
-[![Build Status](https://travis-ci.org/err0r500/go-realworld-clean.svg?branch=master)](https://travis-ci.org/err0r500/go-realworld-clean)
-[![BCH compliance](https://bettercodehub.com/edge/badge/err0r500/go-realworld-clean?branch=master)](https://bettercodehub.com/)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/107e5849415b40f4ae9c235afecebf56)](https://www.codacy.com/app/Err0r500/go-realworld-clean?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=err0r500/go-realworld-clean&amp;utm_campaign=Badge_Grade)
-[![codecov](https://codecov.io/gh/err0r500/go-realworld-clean/branch/master/graph/badge.svg)](https://codecov.io/gh/err0r500/go-realworld-clean)
-
-
-# How it works
-
-## Clean Architecture :
-Layers ( from the most abstract to the most concrete ) :
-- domain : abstract data structures
-- uc : "use cases", the pure business logic
-- implem : implementations of the interfaces used in the business logic (uc layer)
-- infra : setup/configuration of the implementation
-
-#### Golden rules : 
-- a layer never imports something from a layer below it
-- 3rd-party libraries are forbidden in the 2 topmost layers
-
-#### Benefits :
-- flexibility
-- testability
-
-# Getting started
-### Build the app 
-```
-make
-```
-### Run the app
-```bash
-./go-realworld-clean
-```
-
-### Run the integration tests
-Start the server with an existing user
-```
-./go-realworld-clean --populate=true
-```
-
-In another terminal, run the tests against the API
-```
-newman run api/Conduit.postman_collection.json \
-  -e api/Conduit.postman_integration_test_environment.json \
-  --global-var "EMAIL=joe@what.com" \
-  --global-var "PASSWORD=password"
-```
-# Additional
-## Make Targets
-
-The version is either `0.1.0` if no tag has ever been defined or the latest
-tag defined. The build number is the SHA1 of the latest commit.
-
-- **make**: Builds and injects version/build in binary
-- **make init**: Sets the pre-commit hook in the repository
-- **make docker**: Build docker image and tag it with both `latest` and version
-- **make latest**: Build docker image and tag it only with `latest`
-- **make test**: Executes the test suite
-- **make mock**: Generate the necessary mocks
-- **make clean**: Removes the built binary if present

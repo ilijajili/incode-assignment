@@ -1,0 +1,39 @@
+# Values for kube-prometheus-stack Helm chart
+prometheus:
+  prometheusSpec:
+    scrapeInterval: 30s
+    retention: 15d
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+grafana:
+  adminUser: admin
+  adminPassword: "CHANGE_ME_IN_SECRET"
+  service:
+    type: LoadBalancer
+  dashboards:
+    default:
+      app-metrics:
+        gnetId: 15757
+        revision: 1
+        datasource: Prometheus
+      k8s-overview:
+        gnetId: 15760
+        revision: 1
+        datasource: Prometheus
+
+alertmanager:
+  enabled: true
+
+additionalServiceMonitors:
+  - name: task-app
+    selector:
+      matchLabels:
+        app: task-app
+    namespaceSelector:
+      matchNames:
+        - task-app
+    endpoints:
+      - port: http
+        path: /metrics
+        interval: 30s

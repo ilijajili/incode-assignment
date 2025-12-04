@@ -1,0 +1,80 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
+    targetRevision: main
+    path: argocd/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
+    targetRevision: main
+    path: k8s/overlays/dev
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
+    targetRevision: main
+    chart: kube-prometheus-stack
+    helm:
+      valueFiles:
+        - observability/prometheus-grafana/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
+    targetRevision: main
+    path: logging/fluent-bit
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

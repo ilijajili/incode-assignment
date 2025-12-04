@@ -18,13 +18,5 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-
-  dynamic "assume_role" {
-    for_each = var.github_actions_role_arn == null || var.github_actions_role_arn == "" ? [] : [var.github_actions_role_arn]
-
-    content {
-      role_arn = assume_role.value
-    }
-  }
 }
 

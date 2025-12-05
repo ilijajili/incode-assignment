@@ -35,6 +35,10 @@ func NewRouterWithLogger(i uc.Handler, auth uc.AuthHandler, logger uc.Logger) Ro
 }
 
 func (rH RouterHandler) SetRoutes(r *gin.Engine) {
+	r.GET("/healthz", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
 	api := r.Group("/api")
 	api.Use(rH.errorCatcher())
 

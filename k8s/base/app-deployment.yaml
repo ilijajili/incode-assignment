@@ -21,7 +21,7 @@ spec:
           image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/task-app:${IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000
+            - containerPort: 8080
           env:
             - name: DATABASE_URL
               valueFrom:
@@ -48,12 +48,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 8000
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 8000
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15

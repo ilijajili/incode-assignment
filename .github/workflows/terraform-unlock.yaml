@@ -1,0 +1,80 @@
+name: Unlock Terraform state
+
+on:
+  workflow_dispatch:
+    inputs:
+      lock_id:
+        description: "Terraform lock ID reported in the error message"
+        required: true
+      state_bucket:
+        description: "Name of the S3 bucket that stores the Terraform state"
+        required: true
+      state_lock_table:
+        description: "Name of the DynamoDB table used for Terraform state locking"
+        required: true
+      state_key:
+        description: "Path/key of the Terraform state file"
+        default: "eks-gitops/terraform.tfstate"
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'us-east-1' }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  TERRAFORM_STATE_BUCKET: ${{ inputs.state_bucket || vars.TERRAFORM_STATE_BUCKET }}
+  TERRAFORM_STATE_LOCK_TABLE: ${{ inputs.state_lock_table || vars.TERRAFORM_STATE_LOCK_TABLE }}
+  TERRAFORM_STATE_KEY: ${{ inputs.state_key || vars.TERRAFORM_STATE_KEY }}
+
+jobs:
+  terraform-unlock:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Configure Terraform backend
+        id: tf-backend
+        env:
+          AWS_REGION_VALUE: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'us-east-1' }}
+          STATE_BUCKET: ${{ env.TERRAFORM_STATE_BUCKET }}
+          LOCK_TABLE: ${{ env.TERRAFORM_STATE_LOCK_TABLE }}
+          STATE_KEY: ${{ env.TERRAFORM_STATE_KEY != '' && env.TERRAFORM_STATE_KEY || 'eks-gitops/terraform.tfstate' }}
+        run: |
+          set -euo pipefail
+          test -n "$STATE_BUCKET" || { echo "TERRAFORM_STATE_BUCKET variable is required"; exit 1; }
+          test -n "$LOCK_TABLE" || { echo "TERRAFORM_STATE_LOCK_TABLE variable is required"; exit 1; }
+          test -n "$STATE_KEY" || { echo "TERRAFORM_STATE_KEY variable is required"; exit 1; }
+          echo "bucket=$STATE_BUCKET" >> "$GITHUB_OUTPUT"
+          echo "dynamodb_table=$LOCK_TABLE" >> "$GITHUB_OUTPUT"
+          echo "key=$STATE_KEY" >> "$GITHUB_OUTPUT"
+          echo "region=$AWS_REGION_VALUE" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform init
+        working-directory: infra/terraform
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ steps.tf-backend.outputs.bucket }}" \
+            -backend-config="dynamodb_table=${{ steps.tf-backend.outputs.dynamodb_table }}" \
+            -backend-config="key=${{ steps.tf-backend.outputs.key }}" \
+            -backend-config="region=${{ steps.tf-backend.outputs.region }}"
+
+      - name: Force-unlock Terraform state
+        env:
+          LOCK_ID: ${{ github.event.inputs.lock_id }}
+        working-directory: infra/terraform
+        run: |
+          test -n "$LOCK_ID" || { echo "lock_id input is required"; exit 1; }
+          terraform force-unlock -force "$LOCK_ID"

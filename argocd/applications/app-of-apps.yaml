@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
-    targetRevision: main
+    targetRevision: master
     path: argocd/applications
   destination:
     server: https://kubernetes.default.svc
@@ -26,7 +26,7 @@ spec:
   project: default
   source:
     repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
-    targetRevision: main
+    targetRevision: master
     path: k8s/overlays/dev
     directory:
       recurse: true
@@ -47,7 +47,7 @@ spec:
   project: default
   source:
     repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
-    targetRevision: main
+    targetRevision: master
     chart: kube-prometheus-stack
     helm:
       valueFiles:
@@ -69,7 +69,7 @@ spec:
   project: default
   source:
     repoURL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git
-    targetRevision: main
+    targetRevision: master
     path: logging/fluent-bit
   destination:
     server: https://kubernetes.default.svc

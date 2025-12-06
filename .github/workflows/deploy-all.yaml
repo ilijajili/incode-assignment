@@ -30,6 +30,8 @@ env:
 
 jobs:
   infra:
+    outputs:
+      cluster_name: ${{ steps.cluster-info.outputs.cluster_name }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -84,6 +86,51 @@ jobs:
 
           aws ssm put-parameter --name "/task-app/database_url" --type "SecureString" --value "$DATABASE_URL" --overwrite
           aws ssm put-parameter --name "/task-app/redis_url" --type "SecureString" --value "$REDIS_URL" --overwrite
+
+      - name: Collect cluster info
+        id: cluster-info
+        working-directory: infra/terraform
+        run: |
+          echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+
+  bootstrap-argocd:
+    needs: infra
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig --name "${{ needs.infra.outputs.cluster_name }}" --region "${AWS_REGION}"
+
+      - name: Install Argo CD
+        run: |
+          kubectl apply -f argocd/install/namespace.yaml
+          kubectl apply -f argocd/install/install.yaml
+          kubectl wait --for=condition=Available deployment/argocd-server -n argocd --timeout=5m
+
+      - name: Seed Argo CD Applications
+        run: |
+          kubectl apply -f argocd/applications/app-of-apps.yaml
+          kubectl get applications -n argocd
+
+      - name: Ensure ingress and load balancer resources exist
+        run: |
+          kubectl apply -k k8s/overlays/dev
+          kubectl get ingress -A
+          kubectl get svc -A | grep LoadBalancer || true
 
   app:
     needs: infra

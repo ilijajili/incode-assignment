@@ -20,11 +20,11 @@ Set the following in GitHub Secrets/Variables:
 The deploy workflows will automatically publish the connection strings to AWS Parameter Store (keys `task-app/database_url` and `task-app/redis_url`) after Terraform apply using the RDS/Redis endpoints and the GitHub-provided credentials above.
 
 ## Bootstrap Infrastructure
-Run deploy-all.yml workflow.
+Run deploy-all.yml workflow (it now provisions EKS, installs ArgoCD automatically, and seeds the Applications).
 
 ## Deploy the App via GitOps
 - Ensure Kubernetes Secrets are created matching `k8s/base/secret-placeholders.yaml` keys.
-- ArgoCD will sync the app, observability, and logging stacks automatically from `main`.
+- ArgoCD will sync the app, observability, and logging stacks automatically from `master`.
 
 ## CI/CD Workflows
 - **deploy-all.yml**: deploys all infra. 

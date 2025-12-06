@@ -80,8 +80,8 @@ jobs:
           fi
           REDIS_URL="rediss://${REDIS_AUTH_SEGMENT}${REDIS_ENDPOINT}:6379/0"
 
-          aws ssm put-parameter --name "/task-app/database_url" --type "SecureString" --value "$DATABASE_URL" --overwrite
-          aws ssm put-parameter --name "/task-app/redis_url" --type "SecureString" --value "$REDIS_URL" --overwrite
+          aws ssm put-parameter --name "task-app/database_url" --type "SecureString" --value "$DATABASE_URL" --overwrite
+          aws ssm put-parameter --name "task-app/redis_url" --type "SecureString" --value "$REDIS_URL" --overwrite
 
       - name: Collect Terraform outputs
         id: tf-outputs

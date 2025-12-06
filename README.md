@@ -17,7 +17,7 @@ This repository demonstrates a production-style, fully automated deployment stac
 ## Quick start
 1. Read `docs/SETUP.md` for bootstrap steps.
 2. Provision AWS infrastructure with Terraform (S3 remote state, VPC, EKS, RDS, Redis, S3 buckets, IAM OIDC for GitHub Actions).
-3. Install ArgoCD and point it at this repo's main branch.
+3. ArgoCD is installed automatically by the `deploy-all` workflow; it points at this repo's `main` branch and seeds the app/logging/observability Applications.
 4. Run the CI/CD workflows from GitHub Actions to build/push the app image and update manifests. ArgoCD syncs the changes to EKS.
 5. Observe logs in CloudWatch and metrics in Grafana.
 

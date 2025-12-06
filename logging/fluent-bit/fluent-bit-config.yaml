@@ -88,7 +88,7 @@ metadata:
   name: fluent-bit
   namespace: logging
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::188362558545:role/fluent-bit"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::<account_id>:role/fluent-bit"
 ---
 apiVersion: v1
 kind: Namespace

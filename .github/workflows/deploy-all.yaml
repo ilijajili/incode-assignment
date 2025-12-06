@@ -118,6 +118,8 @@ jobs:
       - name: Install Argo CD
         run: |
           kubectl apply -f argocd/install/namespace.yaml
+          kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/crds.yaml
+          kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=2m
           kubectl apply -f argocd/install/install.yaml
           kubectl wait --for=condition=Available deployment/argocd-server -n argocd --timeout=5m
 

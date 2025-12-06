@@ -4,7 +4,7 @@ namespace: task-app
 resources:
   - ../../k8s/base
 images:
-  - name: 188362558545.dkr.ecr.us-east-1.amazonaws.com/task-app
+  - name: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/task-app
     newTag: dev
 configMapGenerator:
   - name: task-app-config

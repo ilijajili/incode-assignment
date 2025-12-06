@@ -4,7 +4,16 @@ namespace: task-app
 resources:
   - ../../base
 images:
-  - name: 188362558545.dkr.ecr.us-east-1.amazonaws.com/task-app
+  - name: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/task-app
     newTag: dev
-patchesStrategicMerge:
-  - app-configmap-patch.yaml
+patches:
+  - path: app-configmap-patch.yaml
+    target:
+      kind: ConfigMap
+      name: task-app-config
+  - path: secret-replacement-patch.yaml
+    target:
+      group: external-secrets.io
+      version: v1beta1
+      kind: ExternalSecret
+      name: task-app-secret
